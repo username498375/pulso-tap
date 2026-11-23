@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101827">
+  <meta name="description" content="Estimador de frecuencia cardíaca mediante toques de pantalla, sin sensores ni cuentas.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <title>Pulso Tap — pulsa al ritmo de tu corazón</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #101827; color: #f5f8fd; }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { min-height: 100%; margin: 0; }
+    body { display: grid; place-items: center; padding: max(18px, env(safe-area-inset-top)) 16px max(26px, env(safe-area-inset-bottom)); background: radial-gradient(ellipse at top, #20354c 0%, #101827 62%); }
+    .app { width: min(100%, 470px); }
+    header { text-align: center; margin: 0 0 20px; }
+    h1 { margin: 0 0 4px; font-size: clamp(1.5rem, 5vw, 2rem); letter-spacing: -0.04em; }
+    .subhead { color: #a7b9ca; font-size: .89rem; margin: 0; }
+    .panel { background: #192539; border: 1px solid #31455e; border-radius: 26px; padding: 18px; box-shadow: 0 18px 50px #0005; }
+    .stat { text-align: center; min-height: 118px; display: grid; justify-content: center; align-content: center; }
+    .bpm { color: #f2f9ff; font-size: clamp(4rem, 21vw, 6rem); font-weight: 800; letter-spacing: -.08em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .bpm-unit { display: block; color: #94aec4; letter-spacing: .18em; font-size: .79rem; font-weight: 700; margin-top: 5px; }
+    .signal { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 18px; }
+    .tile { background: #111c2c; border: 1px solid #2a4058; border-radius: 14px; text-align: center; padding: 10px; }
+    .tile dt { font-size: .74rem; color: #adc0d0; }
+    .tile dd { font-size: 1.14rem; font-weight: 750; margin: 3px 0 0; font-variant-numeric: tabular-nums; }
+    #tap { touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none; width: 100%; aspect-ratio: 1.18 / 1; max-height: 330px; border-radius: 28px; border: 2px solid #72d5df; color: #05212d; background: linear-gradient(155deg, #80e5eb, #35b8c8); box-shadow: inset 0 -7px 0 #19889a, 0 0 0 5px #4dd1df13; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 9px; transition: transform .08s ease, filter .12s ease; font: inherit; }
+    #tap:active, #tap.hit { transform: scale(.985); filter: brightness(1.13); }
+    #tap:focus-visible, .secondary:focus-visible { outline: 3px solid white; outline-offset: 4px; }
+    .heart { font-size: 4rem; line-height: 1; color: #073a47; }
+    #tap strong { font-size: clamp(1.45rem, 6vw, 2rem); }
+    #tap small { font-size: .86rem; color: #154e5b; font-weight: 600; }
+    #tap:disabled { filter: grayscale(.5); opacity: .7; cursor: not-allowed; }
+    .status { margin: 17px 0 13px; color: #b6d8e5; min-height: 40px; font-size: .91rem; text-align: center; }
+    .status.warn { color: #f3d998; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .secondary { touch-action: manipulation; background: #2b3b50; border: 1px solid #52667b; border-radius: 14px; color: #f4f7ff; padding: 14px 8px; font-size: .94rem; font-weight: 650; cursor: pointer; }
+    .secondary:disabled { opacity: .38; cursor: not-allowed; }
+    .secondary:not(:disabled):active { background: #3b4e62; }
+    .notes { padding: 16px 3px 0; color: #a9bac9; font-size: .82rem; line-height: 1.5; }
+    .notes p { margin: 0 0 9px; }
+    .notes strong { color: #e2ecf7; }
+    @media (max-height: 740px) { body { display: block; } .panel { padding: 14px; } header { margin-bottom: 12px; } #tap { max-height: 255px; } .stat { min-height: 98px; } .signal { margin: 10px 0; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header><h1>♥ Pulso Tap</h1><p class="subhead">Mide el pulso tocando la pantalla</p></header>
+    <section class="panel" aria-label="Medidor de frecuencia cardíaca">
+      <div class="stat" aria-live="polite" aria-atomic="true">
+        <div id="bpm" class="bpm">—</div><span class="bpm-unit">LATIDOS / MINUTO</span>
+      </div>
+      <dl class="signal">
+        <div class="tile"><dt>Toques</dt><dd id="taps">0</dd></div>
+        <div class="tile"><dt>Tiempo</dt><dd id="elapsed">0 s</dd></div>
+      </dl>
+      <button id="tap" type="button" aria-label="Registrar un latido">
+        <span class="heart" aria-hidden="true">♥</span><strong>TOCA CADA LATIDO</strong><small>1 pulsación = 1 toque</small>
+      </button>
+      <p id="status" class="status" role="status" aria-live="polite">Busca tu pulso en la muñeca y toca al sentirlo.</p>
+      <div class="actions">
+        <button id="reset" class="secondary" type="button">↻ Reiniciar</button>
+        <button id="finish" class="secondary" type="button" disabled>✓ Terminar</button>
+      </div>
+    </section>
+    <aside class="notes">
+      <p><strong>Cómo medir:</strong> apoya dos dedos sobre la arteria radial, toca al ritmo de cada latido durante 15–30 segundos y mira el valor. Para ritmos irregulares, cuenta manualmente durante 60 segundos.</p>
+      <p>Estimación manual, <strong>no un dispositivo médico</strong>. El resultado depende de tu precisión al tocar. No sirve para excluir arritmias, infecciones u otras enfermedades. No guarda ni transmite datos.</p>
+    </aside>
+  </main>
+  <script>
+    (() => {
+      'use strict';
+      const byId = id => document.getElementById(id);
+      const bpmEl = byId('bpm'), tapsEl = byId('taps'), timeEl = byId('elapsed');
+      const tapBtn = byId('tap'), resetBtn = byId('reset'), finishBtn = byId('finish'), statusEl = byId('status');
+      let times = [], finished = false, tick = null, lastEstimate = null;
+
+      function median(data) {
+        const arr = [...data].sort((a, b) => a - b);
+        const mid = Math.floor(arr.length / 2);
+        return arr.length % 2 ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2;
+      }
+      function estimate() {
+        if (times.length < 4) return null;
+        const gaps = times.slice(1).map((t, i) => t - times[i]).slice(-12);
+        const m = median(gaps);
+        // Rejected implausible short/long intervals are handled at tap time.
+        // Use a median (robust to a missed tap), and separately flag variable timing.
+        const spread = median(gaps.map(g => Math.abs(g - m))) / m;
+        const bpm = Math.round(60000 / m);
+        return { bpm, variable: gaps.length >= 5 && spread > .13 };
+      }
+      function setStatus(message, warn = false) {
+        statusEl.textContent = message;
+        statusEl.classList.toggle('warn', warn);
+      }
+      function updateTime() {
+        timeEl.textContent = times.length ? `${Math.max(0, Math.round((performance.now() - times[0]) / 1000))} s` : '0 s';
+      }
+      function render() {
+        tapsEl.textContent = String(times.length);
+        if (finished && times.length) {
+          timeEl.textContent = `${Math.round((times[times.length - 1] - times[0]) / 1000)} s`;
+        } else updateTime();
+        const current = estimate();
+        lastEstimate = current;
+        bpmEl.textContent = current ? String(current.bpm) : '—';
+        finishBtn.disabled = !current || finished;
+        tapBtn.disabled = finished;
+        if (finished) {
+          setStatus(current ? `Medición finalizada: aproximadamente ${current.bpm} lpm.` : 'Medición terminada.');
+        } else if (times.length === 0) {
+          setStatus('Busca tu pulso en la muñeca y toca al sentirlo.');
+        } else if (!current) {
+          setStatus(`Continúa: faltan ${4 - times.length} toque(s) para la primera estimación.`);
+        } else if (current.variable) {
+          setStatus(`Cadencia variable: ${current.bpm} lpm orientativos. Repite o cuenta 60 s.`, true);
+        } else if (times.length < 8) {
+          setStatus('Estimación preliminar. Sigue tocando para mejorarla.');
+        } else {
+          setStatus('Estimación en tiempo real. Continúa 15–30 s y pulsa Terminar.');
+        }
+      }
+      function reset(message = null) {
+        times = []; finished = false; lastEstimate = null;
+        if (tick) clearInterval(tick);
+        tick = null;
+        tapBtn.classList.remove('hit');
+        render();
+        if (message) setStatus(message, true);
+      }
+      function recordTap() {
+        if (finished) return;
+        const now = performance.now();
+        if (times.length) {
+          const gap = now - times[times.length - 1];
+          if (gap < 250) { setStatus('Toque muy rápido (<250 ms): ignorado.', true); return; }
+          if (gap > 2500) { times = []; setStatus('Pausa larga: nueva medición.'); }
+        }
+        times.push(now);
+        if (!tick) tick = setInterval(() => { if (!finished) updateTime(); }, 250);
+        if (typeof navigator.vibrate === 'function') navigator.vibrate(12);
+        tapBtn.classList.remove('hit');
+        void tapBtn.offsetWidth;
+        tapBtn.classList.add('hit');
+        window.setTimeout(() => tapBtn.classList.remove('hit'), 95);
+        render();
+      }
+      tapBtn.addEventListener('click', recordTap);
+      resetBtn.addEventListener('click', () => reset());
+      finishBtn.addEventListener('click', () => {
+        if (!lastEstimate || finished) return;
+        finished = true;
+        if (tick) clearInterval(tick);
+        tick = null;
+        render();
+      });
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden && times.length && !finished) {
+          // A hidden page must not mix measurement sessions.
+          reset('Medición reiniciada porque la aplicación pasó a segundo plano.');
+        }
+      });
+      if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js').catch(() => {});
+        });
+      }
+      render();
+    })();
+  </script>
+</body>
+</html>
