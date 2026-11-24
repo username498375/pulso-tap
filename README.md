@@ -40,3 +40,4 @@ Visita http://localhost:8000 en el mismo equipo.
 - `sw.js`: caché offline.
 - `icon.svg`: icono vectorial.
 - `LICENSE`: licencia MIT.
+Versión 3.0 — Noviembre de 2026.
