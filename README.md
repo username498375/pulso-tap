@@ -9,9 +9,9 @@ Aplicación web ligera que estima la **frecuencia cardíaca** a partir de toques
 3. Desde el cuarto toque se muestra una estimación, calculada con la mediana de los últimos 12 intervalos.
 4. Pulsa **Terminar** para fijar el resultado o **Reiniciar** para repetir.
 
-Los toques separados por menos de 250 ms se ignoran; las pausas superiores a 2,5 segundos reinician la medición. Avisa cuando la cadencia es variable.
+Los toques separados por menos de 250 ms se ignoran; las pausas superiores a 2,5 segundos reinician la medición. El indicador muestra «Evaluando regularidad» hasta el sexto toque y, después, «Cadencia regular» o «Cadencia variable», según la desviación absoluta mediana normalizada de hasta los últimos 12 intervalos (umbral del 13 %). Describe la cadencia de los toques, no el ritmo cardíaco ni la fiabilidad clínica.
 
-**No es un dispositivo médico.** La frecuencia depende de la precisión manual y no sirve para detectar arritmias ni descartar sepsis u otras enfermedades. Con pulso irregular, cuenta durante 60 segundos. Los datos se procesan localmente y no se almacenan ni se transmiten.
+**No es un dispositivo médico.** La frecuencia depende de la precisión manual y no sirve para detectar arritmias ni descartar sepsis u otras enfermedades. Con pulso irregular, cuenta durante 60 segundos. Los datos se procesan en memoria volátil: solo se conserva la medición actual, que se descarta al reiniciar o recargar. No se guarda historial ni se transmiten mediciones. La interfaz adapta el área de toque a la altura de pantalla, con los botones principales visibles en condiciones normales y las instrucciones plegables. No utiliza vibración.
 
 ## Publicar en GitHub Pages
 
@@ -19,7 +19,7 @@ En el repositorio, abre **Settings → Pages → Build and deployment**, selecci
 
 Luego abre https://username498375.github.io/pulso-tap/ en el navegador móvil.
 
-Puedes añadirla a la pantalla de inicio desde el menú de Chrome. El service worker guarda los recursos necesarios para su uso sin conexión tras una primera visita correcta.
+Puedes añadirla a la pantalla de inicio desde el menú de Chrome. El service worker guarda los recursos necesarios para su uso sin conexión tras una primera visita correcta. Utiliza una caché propia versionada (`pulso-tap-vN`), sin consultar ni borrar cachés de otras miniapps del mismo origen. La navegación prioriza HTML de red cuando hay conexión, con una copia local como respaldo.
 
 ## Desarrollo
 
