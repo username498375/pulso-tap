@@ -1,5 +1,7 @@
 # Pulso Tap
 
+Revisión de interfaz: v3 (diseño compacto e indicador de regularidad).
+
 Aplicación web ligera que estima la **frecuencia cardíaca** a partir de toques de pantalla sincronizados con el pulso.
 
 ## Funcionamiento
